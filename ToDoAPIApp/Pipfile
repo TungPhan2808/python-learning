@@ -13,6 +13,10 @@ python-jose = "*"
 pydantic = {extras = ["email"], version = "*"}
 argon2-cffi = "*"
 passlib = "*"
+pytest = "*"
+pytest-asyncio = "*"
+httpx = "*"
+pytest-mock = "*"
 
 [dev-packages]
 

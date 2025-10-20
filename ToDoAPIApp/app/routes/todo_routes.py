@@ -66,6 +66,7 @@ async def update_todo(
         completed = updated_todo["completed"]
     )
 
+# Delete a To-Do Item
 @router.delete("/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_todo(todo_id: str, user_email: str = Depends(get_current_user)):
     existing_todo = await todos_collection.find_one({"_id": ObjectId(todo_id)})
@@ -83,38 +84,38 @@ async def delete_todo(todo_id: str, user_email: str = Depends(get_current_user))
 
     await todos_collection.delete_one({"_id": ObjectId(todo_id)})
 
+# Get To-Do Items
 @router.get("")
 async def get_todos(
-        page: int = Query(1, ge=1),
-        limit: int = Query(10, ge=1),
-        completed: Optional[bool] = Query(None),
-        search: Optional[str] = Query(None, description="Search by title or description"),
-        sort_order: str = Query("desc", regex="^(asc|desc)$"),
-        user_email: str = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1),
+    completed: Optional[bool] = Query(None),
+    search: Optional[str] = Query(None, description="Search by title or description"),
+    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    user_email: str = Depends(get_current_user),
 ):
     query: dict[str, Any] = {"owner": user_email}
 
-    # Filter
     if completed is not None:
         query["completed"] = completed
 
-    # Search
     if search:
         query["$or"] = [
             {"title": {"$regex": search, "$options": "i"}},
             {"description": {"$regex": search, "$options": "i"}},
         ]
 
-    # Sort
     sort_direction = -1 if sort_order == "desc" else 1
-
     skip = (page - 1) * limit
-    total = await todos_collection.count_documents({})
-    cursor = (todos_collection
-              .find(query)
-              .sort("_id", sort_direction)
-              .skip(skip)
-              .limit(limit))
+
+    total = await todos_collection.count_documents(query)
+    cursor = (
+        todos_collection
+        .find(query)
+        .sort("_id", sort_direction)
+        .skip(skip)
+        .limit(limit)
+    )
 
     todos = []
     async for item in cursor:
@@ -122,6 +123,7 @@ async def get_todos(
             "id": str(item["_id"]),
             "title": item["title"],
             "description": item["description"],
+            "completed": item.get("completed") or False
         })
 
     return {
@@ -131,6 +133,7 @@ async def get_todos(
         "total": total
     }
 
+# Get to-do by id
 @router.get("/{todo_id}", response_model=ToDoResponse)
 async def get_todo(
         todo_id: str,
